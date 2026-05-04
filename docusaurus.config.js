@@ -5,7 +5,11 @@ module.exports = {
   url: 'https://help.smatechnologies.com',
   baseUrl: '/opcon/connectors/jdedwards/',
   onBrokenLinks: 'throw',
-  onBrokenMarkdownLinks: 'warn',
+  markdown: {
+    hooks: {
+      onBrokenMarkdownLinks: 'warn',
+    },
+  },
   favicon: 'img/favicon.ico',
   organizationName: 'smatechnologies',
   projectName: 'jdedwards-connector-docs',
@@ -28,7 +32,7 @@ module.exports = {
       '@docusaurus/preset-classic',
       {
         docs: {
-          breadcrumbs: false,
+          breadcrumbs: true,
           routeBasePath: '/',
           sidebarPath: require.resolve('./sidebars.js'),
           editUrl:
@@ -46,7 +50,7 @@ module.exports = {
   ],
   plugins: [
     [
-      require.resolve('@cmfcmf/docusaurus-search-local'), 
+      require.resolve('@cmfcmf/docusaurus-search-local'),
       {
       }
     ],

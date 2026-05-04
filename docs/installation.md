@@ -1,104 +1,145 @@
+---
+title: Installation
+description: "Step-by-step instructions for installing and configuring the JDEdwards Connector on a JDEdwards Enterprise Server."
+tags:
+  - Procedural
+  - System Administrator
+  - Installation
+---
+
 # Installation
 
-The JDEdwards Connector installation consists of multiple steps that are required to complete the installation successfully. 
-The connector requires that the target JDEdwards Scheduler implements a database accessible by a JDBC driver. 
-Current implementation supports SQL Server and Oracle. 
-The JDEdwards Connector also requires the installation of a Windows Agent.
+## What is it?
 
-## Supported Software Levels
-The following software levels are required to implement the JDEdwards Connector.
+The JDEdwards Connector installation deploys the connector software on a JDEdwards Enterprise Server, configures database connections for report status monitoring, and adds the JDEdwards E1 job subtype to Enterprise Manager.
 
-- OpCon Release 19.0 or higher.
-- Embedded Java OpenJDK 11 (part of installation).
-- JDEdwards Enterprise One.
+Complete the installation on every Enterprise Server that requires OpCon to start JDEdwards reports. A single OpCon instance can manage connectors installed on multiple Enterprise Servers.
 
-## Supported Databases
-The following databases are supported.
+Use this installation when you need to:
 
-- SQL Server.
-- Oracle.
+- Connect OpCon to a JDEdwards Enterprise Server for the first time
+- Add a new Enterprise Server to an existing OpCon and JDEdwards integration
+- Reconfigure the connector after a JDEdwards database connection change
 
-## Installation
-The installation process consists of the following steps:
+## Before you begin
 
-- OpCon Windows Agent Installation.
-- JDEdwards Connector Installation.
-- Adding JDEdwards Connector job subtype to Enterprise Manager.
-- JDEdwards Connector Configuration.
- 
-### OpCon Windows Agent Installation
-The JDEdwards Connector requires a SMA OpCon Windows Agent. The Agent should be installed on the same system as the JDEdwards Enterprise server.
+Verify the following software requirements before starting the installation.
 
-### JDEdwards Connector Installation
-The JDEdwards connector must be installed on the Enterprise Server that will execute the reports alon with a SMA OpCon Windows Agent. 
+| Component | Requirement |
+|---|---|
+| OpCon | Release 19.0 or higher |
+| Java | Embedded OpenJDK 11 — included in the connector package, no separate installation needed |
+| JDEdwards | Enterprise One |
+| Database | SQL Server or Oracle |
 
-Copy the supplied install file SMAJDEdwardsConnector-win.zip and extract it into the installation directory.
+## Installation steps
 
-After the extraction, the root installation directory contains the connector executable (SMAJDEdwards.exe), the encryption software (EncryptValue.exe), the Connector.config file and two directories, java and emplugins. 
-The java directory contains the java software required to execute the connector (OpenJDK 11) and the emplugins directory contains the job sub-type plugin for Enterprise Manager.
+### Step 1 — Install the OpCon Windows Agent
 
-### Create XML_DIRECTORY
-Create the directory where the generated xml files used by the connector will be stored. The directory name matches the configuration value XML_DIRECTORY (default value is xml meaning
-that the xml directory should be created off the root installation directory ***installation_dir***\\xml). 
+The connector requires an OpCon Windows Agent on the same server as the JDEdwards Enterprise Server. Install the Windows Agent before proceeding.
 
-### Create JDEPath Global Property
-Create a global property **JDEPath** that contains the full path of the installation directory.
+---
 
-### Job Subtype Installation
-Copy the Enterprise Manager plug-in from the ***installation_dir***\\emplugins directory to the dropins directory of the Enterprise Manager installation. 
+### Step 2 — Install the connector
 
-If the dropins directory does not exist, create the dropins directory off the root directory. 
+1. Copy `SMAJDEdwardsConnector-win.zip` to the Enterprise Server.
+2. Extract the zip file into the installation directory of your choice.
 
-Restart Enterprise Manager and a new Windows job subtype called Cegid ORLI will be visible.
+After extraction, the directory contains the following files:
 
-If not restart Enterprise Manager using 'Run as Administrator'. After this Enterprise Manager can be used normally.
+| File or folder | Purpose |
+|---|---|
+| `SMAJDEdwards.exe` | The connector executable |
+| `EncryptValue.exe` | Utility for encrypting passwords before placing them in the config file |
+| `Connector.config` | The connector configuration file |
+| `java\` | Embedded OpenJDK 11 runtime |
+| `emplugins\` | Enterprise Manager job subtype plugin |
 
-## JDEdwards Connector Configuration
-The configuration of the JDEdwards Connector requires setting the required values in the Connector.config file. 
+---
 
-The Connector.config file contains information for the JDEdwards Connector about required directories, the execution host and database connections. 
+### Step 3 — Create the XML directory
 
-It is possible to configure multiple database connections, with the first database connection defined under the heading DATABASE1 and subsequent connections 
-incrementing the last number (i.e. DATABASE2, DATABASE3). The sample configuration shows the definitions for a SQL Server connection and an Oracle connection.
+Create a directory to store the XML files the connector generates when submitting reports.
 
-All password values placed in the configuration and template files must be encrypted using the EncryptValue.exe utility provided with the connector. When executing the tool, a single argument -v is used to provide the value that must be encrypted.
+The directory name must match the `XML_DIRECTORY` value in `Connector.config`. The default is `xml`, which means you create the folder at `installation_dir\xml`.
 
-#### EncryptValue Utility
-The EncryptValue utility uses standard 64 bit encryption.
+---
 
-Supports a -v argument and displays the encrypted value
+### Step 4 — Create the JDEPath global property
 
-On Windows, example on how to encrypt the value "abcdefg":
+In OpCon, create a global property named `JDEPath` and set its value to the full path of the connector installation directory.
+
+Job definitions reference this property as `[[JDEPath]]` to locate the connector executable. This makes it easy to move the connector without updating every job definition individually.
+
+---
+
+### Step 5 — Install the Enterprise Manager job subtype
+
+1. Copy the plugin file from `installation_dir\emplugins\` to the `dropins` folder inside the Enterprise Manager installation directory.
+2. If the `dropins` folder does not exist, create it in the Enterprise Manager root directory.
+3. Restart Enterprise Manager. The **JD Edwards E1** job subtype is now available when creating Windows jobs.
+
+:::note
+If the **JD Edwards E1** subtype does not appear after restarting, close Enterprise Manager and reopen it using **Run as Administrator**. After the subtype loads, you can run Enterprise Manager without administrator privileges.
+:::
+
+---
+
+## Configuration
+
+Configure `Connector.config` in the installation directory before running any jobs.
+
+### Encrypting passwords
+
+All passwords in `Connector.config` must be encrypted before you paste them into the file. Use the `EncryptValue.exe` utility that ships with the connector.
 
 ```
-Encrypt.exe -v abcdefg
-
+EncryptValue.exe -v yourpassword
 ```
 
-#### Connector.config configuration
-Configure the Connector.config file in the installation directory setting the required information.
-The Connector.config contains the following values
+The utility prints the encrypted value. Copy and paste it into the appropriate field in `Connector.config`.
 
-Property Name                | Value
------------------------------| -----------
-**[GENERAL SETTINGS]**       | header
-**Name**                     | The name of the connector. This value should not be changed.
-**JOB_OUTPUT_DIRECTORY**     | The name of the directory where created files will be placed. (i.e. c:\\***installation_dir***\\JobOutput\\). NOTE : The backslash character (\\) is a special Java character and if used should be entered twice (\\\\).Alternatively the slash (/) character can be used instead. The directory name must be finished with a trailing \\\\ or /.
-**JDE_OUTPUT_DIRECTORY**     | The name of the directory where the JDEdwards created files can be found (i.e. c:\\JDEdwardsPPack\\E910\\system\\bin32). This directory is checked for the output logs .jde.log and .jdedebug.log when a report completes with an error condition. NOTE : The backslash character (\\) is a special Java character and if used should be entered twice (\\\\).Alternatively the slash (/) character can be used instead. The directory name must be finished with a trailing \\\\ or /.
-**XML_DIRECTORY**            | The directory where the connector places the XML files created when using the RUNUBEXML utility. The default is xml (the connector appends this to the installation directory ***installation_dir***).
-**RUNUBEXML_PATH**	         | The directory where the RUNUBEXML utility can be found.
-**EXECUTION_HOST**           | This is the name of the host system where the report is executed. It is used when searching the database for the status of the report (used in conjunction with the unique jobid returned by RUNUBEXML).
-**DEBUG**                    | If the Connector supports a debug mode, it can be used to set the connector into DEBUG mode. Value either ON or OFF (default OFF).
-**[DATABASE(n)]**            | header : This can be used to define multiple database connections. The value (n) is incremented for each connection starting at 1
-**DATABASE_CONNECTION_NAME** | This defines the name of the connection and is used by the connector to determine which database connection to use to get the status of the job. The -dbname argument submitted with the job definitions is matched to this value to determine which connection to use.
-**DATABASE_TYPE**            | This is used to define the database software of the target database. Supported values are SQL_SERVER & ORACLE.
-**DATABASE_DRIVER**          | The class name of the database driver used to access the database. Supported values are **net.sourceforge.jtds.jdbc.Driver** for SQL Server connections and **oracle.jdbc.OracleDriver** for Oracle connections.
-**DATABASE_URL**             | The connection string for the SQL Server or Oracle database.
-**DATABASE_SCHEMA**          | The database schema that contains the F986110 table.
-**DATABASE_USER**            | The name of a user that has the appropriate privileges to access the F986110 table.
-**DATABASE_USER_PASSWORD**   |The password for the user defined in DATABASE_USER encrypted using the EncryptValue.exe utility.
+---
 
-Example configuration file. 
+### General settings
+
+The `[CONNECTOR]` section controls the connector's directories and execution environment.
+
+:::note Path formatting
+Directory values must use double backslashes (`\\`) or forward slashes (`/`) — not single backslashes. Each directory path must end with a trailing separator (`\\` or `/`).
+:::
+
+| Setting | What it does | Default |
+|---|---|---|
+| `NAME` | Connector instance name — do not change this value | `JDEdwards Connector` |
+| `JOB_OUTPUT_DIRECTORY` | Directory where the connector places output files | (none) |
+| `JDE_OUTPUT_DIRECTORY` | Directory where JDEdwards writes its log files. The connector reads `jde.log` and `jdedebug.log` from here when a report fails | (none) |
+| `XML_DIRECTORY` | Directory for the XML files created by the RUNUBEXML utility. The connector appends this to the installation path | `xml` |
+| `RUNUBEXML_PATH` | Full path to the directory containing the RUNUBEXML utility | (none) |
+| `EXECUTION_HOST` | Name of the host where reports run. Used to look up the correct record in the JDEdwards status table | (none) |
+| `DEBUG` | Set to `ON` to enable verbose logging. Set to `OFF` for normal operation | `OFF` |
+
+---
+
+### Database connection settings
+
+The connector queries the JDEdwards database to monitor report status. Define at least one database connection using a `[DATABASE1]` section. Add more connections by incrementing the number: `[DATABASE2]`, `[DATABASE3]`, and so on.
+
+| Setting | What it does |
+|---|---|
+| `DATABASE_CONNECTION_NAME` | A name you assign to this connection. Job definitions reference this name to select which database to query |
+| `DATABASE_TYPE` | The database software. Use `SQL_SERVER` or `ORACLE` |
+| `DATABASE_DRIVER` | The JDBC driver class. Use `net.sourceforge.jtds.jdbc.Driver` for SQL Server or `oracle.jdbc.OracleDriver` for Oracle |
+| `DATABASE_URL` | The JDBC connection string for the database |
+| `DATABASE_SCHEMA` | The schema that contains the JDEdwards status table (`F986110`) |
+| `DATABASE_USER` | A database user with read access to the `F986110` table |
+| `DATABASE_USER_PASSWORD` | The database user's password, encrypted using `EncryptValue.exe` |
+
+---
+
+### Example configuration
+
+The following example defines one SQL Server connection and one Oracle connection.
 
 ```
 [CONNECTOR]
@@ -127,5 +168,46 @@ DATABASE_URL=jdbc:oracle:thin:@//192.168.178.30:1521/E910DB
 DATABASE_SCHEMA=SVM910
 DATABASE_USER=user
 DATABASE_USER_PASSWORD=5f0e163eeda2e9672c153c2e4a8d82730e44ee77c3ac568fee9d98c80be73810
-
 ```
+
+---
+
+## FAQs
+
+**Can I install the connector on a server that already has a Windows Agent?**
+Yes. The connector installs separately from the Windows Agent. Both must be present on the same Enterprise Server.
+
+**Do I need to install Java separately?**
+No. The connector package includes an embedded OpenJDK 11 runtime in the `java\` directory. No system-level Java installation is required.
+
+**Can I define multiple database connections in one configuration file?**
+Yes. Add additional `[DATABASE(n)]` sections and increment the number for each connection. Each job definition references a connection by its `DATABASE_CONNECTION_NAME` value.
+
+**Why must I use double backslashes in path values?**
+Java treats a single backslash as an escape character. Use double backslashes (`\\`) or forward slashes (`/`) for all directory paths. Each path must also end with a trailing separator.
+
+**What if the JD Edwards E1 job subtype does not appear after restarting Enterprise Manager?**
+Close Enterprise Manager and reopen it using **Run as Administrator**. The subtype should appear after this step. You can run Enterprise Manager without administrator privileges after the initial load.
+
+---
+
+## Glossary
+
+**Connector.config** — The configuration file for the JDEdwards Connector. Contains general settings, directory paths, and one or more database connection definitions.
+
+**DATABASE_CONNECTION_NAME** — The name you assign to a database connection in `Connector.config`. Job definitions use this name to select which database the connector queries for status.
+
+**EncryptValue.exe** — The password encryption utility included with the connector. Run it before placing any password into `Connector.config`.
+
+**emplugins** — The folder in the connector installation that contains the Enterprise Manager job subtype plugin.
+
+**F986110** — The JDEdwards database table that stores report job status records. The connector queries this table to check whether a submitted report has completed.
+
+**JDEPath** — The OpCon global property that holds the connector installation path. Job definitions reference it as `[[JDEPath]]`.
+
+**RUNUBEXML** — The JDEdwards command-line utility the connector uses to submit reports. Must be present on the Enterprise Server.
+
+**Related topics:**
+
+- [Overview](./overview.md)
+- [Operation](./operation.md)
