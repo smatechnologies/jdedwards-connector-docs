@@ -50,7 +50,7 @@ After extraction, the directory contains the following files:
 | File or folder | Purpose |
 |---|---|
 | `SMAJDEdwards.exe` | The connector executable |
-| `EncryptValue.exe` | Utility for encrypting passwords before placing them in the config file |
+| `EncryptValue.exe` | Utility for encoding passwords before placing them in the config file |
 | `Connector.config` | The connector configuration file |
 | `java\` | Embedded OpenJDK 11 runtime |
 | `emplugins\` | Enterprise Manager job subtype plugin |
@@ -61,7 +61,15 @@ After extraction, the directory contains the following files:
 
 Create a directory to store the XML files the connector generates when submitting reports.
 
-The directory name must match the `XML_DIRECTORY` value in `Connector.config`. The default is `xml`, which means you create the folder at `installation_dir\xml`.
+The directory name must match the `XML_DIRECTORY` value in `Connector.config`. There is no default, and the supplied `Connector.config` leaves the setting blank — so set it as well as creating the folder. Setting it to `xml` and creating `installation_dir\xml` is the usual choice.
+
+:::caution
+
+The XML files the connector writes into this directory contain the **JDEdwards user password in clear text**, taken from the **User Password** field of the job definition. The connector does not delete them, so they remain after each report finishes, and their names are derived from the report name and version.
+
+Protect this directory with the same operating system permissions you apply to `Connector.config`, and remove its contents regularly. If you leave `XML_DIRECTORY` blank, these files are written to the installation root alongside the connector executable.
+
+:::
 
 ---
 
@@ -89,15 +97,21 @@ If the **JD Edwards E1** subtype does not appear after restarting, close Enterpr
 
 Configure `Connector.config` in the installation directory before running any jobs.
 
-### Encrypting passwords
+### Encoding passwords
 
-All passwords in `Connector.config` must be encrypted before you paste them into the file. Use the `EncryptValue.exe` utility that ships with the connector.
+All passwords in `Connector.config` must be encoded before you paste them into the file. Use the `EncryptValue.exe` utility that ships with the connector.
 
 ```
 EncryptValue.exe -v yourpassword
 ```
 
-The utility prints the encrypted value. Copy and paste it into the appropriate field in `Connector.config`.
+The utility prints the encoded value. Copy and paste it into the appropriate field in `Connector.config`.
+
+:::caution
+
+Despite its name, `EncryptValue.exe` **encodes** passwords rather than encrypting them. It applies no cipher and uses no key, so anyone who can read `Connector.config` can recover the original password. Encoding stops a password being read at a glance, and that is all it does. Restrict access to `Connector.config` with operating system permissions and treat every value in it as recoverable.
+
+:::
 
 ---
 
@@ -111,13 +125,13 @@ Directory values must use double backslashes (`\\`) or forward slashes (`/`) —
 
 | Setting | What it does | Default |
 |---|---|---|
-| `NAME` | Connector instance name — do not change this value | `JDEdwards Connector` |
+| `NAME` | A label for the connector instance. It has no effect on behaviour | `JDEdwards Connector` |
 | `JOB_OUTPUT_DIRECTORY` | Directory where the connector places output files | (none) |
 | `JDE_OUTPUT_DIRECTORY` | Directory where JDEdwards writes its log files. The connector reads `jde.log` and `jdedebug.log` from here when a report fails | (none) |
-| `XML_DIRECTORY` | Directory for the XML files created by the RUNUBEXML utility. The connector appends this to the installation path | `xml` |
+| `XML_DIRECTORY` | Directory for the XML files created by the RUNUBEXML utility. The connector appends this to the installation path. Required — there is no default, and the supplied `Connector.config` leaves it blank, so the files are written to the installation root until you set it | — |
 | `RUNUBEXML_PATH` | Full path to the directory containing the RUNUBEXML utility | (none) |
-| `EXECUTION_HOST` | Name of the host where reports run. Used to look up the correct record in the JDEdwards status table | (none) |
-| `DEBUG` | Set to `ON` to enable verbose logging. Set to `OFF` for normal operation | `OFF` |
+| `EXECUTION_HOST` | Name of the host where reports run. Used to look up the correct record in the JDEdwards status table. The value must match the host name recorded in the table exactly | (none) |
+| `DEBUG` | Set to `ON` to enable verbose logging. Set to `OFF` for normal operation. Required — the connector fails to load its configuration if this setting is absent, so set it to `OFF` rather than removing it | — |
 
 ---
 
@@ -133,7 +147,7 @@ The connector queries the JDEdwards database to monitor report status. Define at
 | `DATABASE_URL` | The JDBC connection string for the database |
 | `DATABASE_SCHEMA` | The schema that contains the JDEdwards status table (`F986110`) |
 | `DATABASE_USER` | A database user with read access to the `F986110` table |
-| `DATABASE_USER_PASSWORD` | The database user's password, encrypted using `EncryptValue.exe` |
+| `DATABASE_USER_PASSWORD` | The database user's password, encoded using `EncryptValue.exe` |
 
 ---
 
@@ -148,26 +162,26 @@ JOB_OUTPUT_DIRECTORY=
 JDE_OUTPUT_DIRECTORY=c:\\JDEdwardsPPack\\E910\\PrintQueue
 XML_DIRECTORY=xml
 RUNUBEXML_PATH=c:\\JDEdwardsPPack\\E910\\system\\bin32
-EXECUTION_HOST=ENTSQL2013
+EXECUTION_HOST=<enterprise-server-host>
 DEBUG=OFF
 
 [DATABASE1]
 DATABASE_CONNECTION_NAME=DBSERVER1
 DATABASE_TYPE=SQL_SERVER
 DATABASE_DRIVER=net.sourceforge.jtds.jdbc.Driver
-DATABASE_URL=jdbc:jtds:sqlserver://192.168.239.146/JDETEST
+DATABASE_URL=jdbc:jtds:sqlserver://<sql-server-host>/<database-name>
 DATABASE_SCHEMA=SVM910
-DATABASE_USER=user
-DATABASE_USER_PASSWORD=5f0e163eeda2e9672c153c2e4a8d82730e44ee77c3ac568fee9d98c80be73810
+DATABASE_USER=<database-user>
+DATABASE_USER_PASSWORD=<encoded-database-user-password>
 
 [DATABASE2]
 DATABASE_CONNECTION_NAME=DBSERVER2
 DATABASE_TYPE=ORACLE
 DATABASE_DRIVER=oracle.jdbc.OracleDriver
-DATABASE_URL=jdbc:oracle:thin:@//192.168.178.30:1521/E910DB
+DATABASE_URL=jdbc:oracle:thin:@//<oracle-host>:1521/<service-name>
 DATABASE_SCHEMA=SVM910
-DATABASE_USER=user
-DATABASE_USER_PASSWORD=5f0e163eeda2e9672c153c2e4a8d82730e44ee77c3ac568fee9d98c80be73810
+DATABASE_USER=<database-user>
+DATABASE_USER_PASSWORD=<encoded-database-user-password>
 ```
 
 ---
@@ -197,7 +211,7 @@ Close Enterprise Manager and reopen it using **Run as Administrator**. The subty
 
 **DATABASE_CONNECTION_NAME** — The name you assign to a database connection in `Connector.config`. Job definitions use this name to select which database the connector queries for status.
 
-**EncryptValue.exe** — The password encryption utility included with the connector. Run it before placing any password into `Connector.config`.
+**EncryptValue.exe** — The password encoding utility included with the connector. Run it before placing any password into `Connector.config`. Despite its name it applies no cipher and no key, so its output is reversible and the configuration file must be protected by operating system permissions.
 
 **emplugins** — The folder in the connector installation that contains the Enterprise Manager job subtype plugin.
 

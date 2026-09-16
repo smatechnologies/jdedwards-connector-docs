@@ -41,7 +41,7 @@ To define a JDEdwards E1 job, complete the following steps:
 | **Connector Location** | Yes | The installed location of the JDEdwards Connector. The default value is `[[JDEPath]]`. Do not change this unless more than one connector is installed — in that case, define a new global property and update this field accordingly. |
 | **Report Name** | Yes | The name of the report to start. The report must already exist in the JDEdwards environment. |
 | **Report Version** | Yes | The version of the report to run. |
-| **Batch Queue Name** | No | The batch queue on which the report will be processed. If omitted, the value set by RUNUBEXML in the request XML is used. |
+| **Batch Queue Name** | Yes | The batch queue on which the report will be processed. Enterprise Manager shows this field as optional, but the connector requires it — see the caution below. |
 | **Environment** | Yes | The JDEdwards environment where the report will run. |
 | **Database Name** | Yes | The name of a database connection defined in `Connector.config`. Used to retrieve the report status. |
 | **User Name** | Yes | A JDEdwards user with the required privileges to run the report. |
@@ -55,28 +55,45 @@ A JDEdwards E1 job returns one of the following codes when it completes:
 | Code | Status | Description |
 |---|---|---|
 | `0` | `FINISHED_OK` | The report completed successfully. |
-| `1` | `ERRORED` | An exception occurred during job processing. |
+| `1` | `ERRORED` | An exception occurred during job processing, or a required job definition field was left blank. |
+| `99` | Configuration error | The `DATABASE_USER_PASSWORD` setting is missing from the database section in `Connector.config`. |
+| `401` | Configuration error | The `DATABASE_USER_PASSWORD` setting is present in `Connector.config` but empty. |
+
+:::caution
+
+Complete the **Batch Queue Name** field even though Enterprise Manager marks it optional. If you leave it blank, the plug-in omits the batch queue from the connector's command line, the connector rejects the command line as incomplete, and the job fails with a usage message and return code `1` before the report is submitted.
+
+:::
 
 Set the **Failure Criteria** for the job to **NE** (Not Equal) **0** to treat any non-zero return code as a failure.
 
-**NOTE:** On older JDEdwards systems, successful completion may be indicated by a value other than `0`. Check the Agent.config **User Defined RC** section if jobs fail unexpectedly despite completing successfully in JDEdwards.
+:::note
+
+The connector waits for the report to reach a completed or errored state in JDEdwards. It does not time out. A report that is held, queued, or otherwise not progressing leaves the OpCon job running until the report completes or you cancel the OpCon job.
+
+A job that runs far longer than the report should take is usually a configuration problem rather than a slow report. The most common cause is an `EXECUTION_HOST` or `DATABASE_SCHEMA` value in `Connector.config` that does not match the JDEdwards status table, which means the connector never finds the report's status record and keeps checking indefinitely. Check the connector log for a repeating error.
+
+:::
 
 ## Logging
 
-The connector writes activity and job status information to a rotating set of five log files:
+The connector writes activity and job status information to log files in `installation_dir\log`.
 
-- `jdedwardse1.log`
-- `jdedwardse1.log.1` through `jdedwardse1.log.5`
+The active log file is `jdedwardse1.log`. Completed files are rolled into a subdirectory named for the month, with the date and an index in the file name — for example `log\2026-09\jdedwardse1_2026-09-16.0.log`. A new file starts each day, and the index increments when a file reaches 100 MB.
 
-The log files are located in `installation_dir\log`. New entries are appended to the active log file. When the active file reaches its size limit, it rotates to the next numbered file.
+:::caution
+
+Rolled log files are retained indefinitely. The `log` directory grows until you remove old files, so include it in whatever disk monitoring you apply to the Enterprise Server.
+
+:::
 
 All output produced during a job run is available in the OpCon job output and can be retrieved using the Job Output Retrieval System (JORS).
 
-When a job fails, the connector appends the JDEdwards `jde.log` and `jdedebug.log` files to the OpCon job output. You can retrieve the combined output through JORS and use it with the Event Notification System to send the log output as an email attachment to a defined address or distribution list.
+When a job fails, the connector appends the report’s JDEdwards diagnostic files to the OpCon job output. These are held in the `JDE_OUTPUT_DIRECTORY` directory and are named for the report’s own output file, ending in `.jde.log` and `.jdedebug.log` — so they are per-report files rather than a single shared log. You can retrieve the combined output through JORS and use it with the Event Notification System to send the log output as an email attachment to a defined address or distribution list.
 
 ### Sample log output
 
-The following example shows typical log output for a successful report run:
+The following example shows the sequence of operations for a successful report run. It was captured from an earlier release, so the timestamp format and the version line differ from current output — the sequence of steps, and the five-second and ten-second status check intervals it shows, are still accurate.
 
 ```
 2014-09-25 09:37:43,342 INFO  (JDEdwardsConnector) -------------------------------------------------------------
@@ -95,12 +112,12 @@ The following example shows typical log output for a successful report run:
 2014-09-25 09:37:43,654 INFO  (JDEdwardsConnectionFactory) buildBatchRequestXml command line '"c:\JDEdwardsPPack\E910\system\bin32\runubexml.exe" S "C:\jdeconn\xml\R0006P_XJDE0001_base.xml" "C:\jdeconn\xml\R0006P_XJDE0001_request.xml"'
 2014-09-25 09:38:07,023 INFO  (JDEdwardsConnectionFactory) submitJob command line '"c:\JDEdwardsPPack\E910\system\bin32\runubexml.exe" S "C:\jdeconn\xml\R0006P_XJDE0001_request.xml" "C:\jdeconn\xml\R0006P_XJDE0001_result.xml"'
 2014-09-25 09:38:08,521 INFO  (JDEdwardsJobExecutorImpl) Job ID '89' returned
-2014-09-25 09:38:08,521 INFO  (JDEdwardsConnectionFactory) Connecting to database type (ORACLE) using URL 'jdbc:oracle:thin:@//192.168.168.210:1521/E910DB'
-2014-09-25 09:38:08,817 INFO  (JDEdwardsJobExecutorImpl) Connected to database 'jdbc:oracle:thin:@//192.168.168.210:1521/E910DB'
+2014-09-25 09:38:08,521 INFO  (JDEdwardsConnectionFactory) Connecting to database type (ORACLE) using URL 'jdbc:oracle:thin:@//<oracle-host>:1521/<service-name>'
+2014-09-25 09:38:08,817 INFO  (JDEdwardsJobExecutorImpl) Connected to database 'jdbc:oracle:thin:@//<oracle-host>:1521/<service-name>'
 2014-09-25 09:38:08,817 INFO  (JDEdwardsJobExecutorImpl) Job Status Change : JD Edwards Status (Queued)
-2014-09-25 09:38:13,918 INFO  (JDEdwardsConnectionFactory) SELECT JCJOBSTS FROM SVM910.F986110 WHERE JCJOBNBR = 89 AND JCEXEHOST = 'ENTSQL2013'
+2014-09-25 09:38:13,918 INFO  (JDEdwardsConnectionFactory) SELECT JCJOBSTS FROM SVM910.F986110 WHERE JCJOBNBR = 89 AND JCEXEHOST = '<enterprise-server-host>'
 2014-09-25 09:38:14,417 INFO  (JDEdwardsJobExecutorImpl) Job Status Change : JD Edwards Status (Processing)
-2014-09-25 09:38:24,433 INFO  (JDEdwardsConnectionFactory) SELECT JCJOBSTS FROM SVM910.F986110 WHERE JCJOBNBR = 89 AND JCEXEHOST = 'ENTSQL2013'
+2014-09-25 09:38:24,433 INFO  (JDEdwardsConnectionFactory) SELECT JCJOBSTS FROM SVM910.F986110 WHERE JCJOBNBR = 89 AND JCEXEHOST = '<enterprise-server-host>'
 2014-09-25 09:38:24,433 INFO  (JDEdwardsJobExecutorImpl) Job Fin : JD Edwards Status (Done)
 ```
 
@@ -113,10 +130,10 @@ No. The connector only submits and monitors existing JDEdwards jobs. You must de
 Set **Failure Criteria** to **NE** (Not Equal) **0**. A return code of `0` indicates successful completion; any other value indicates an error.
 
 **Where do I find log files when a job fails?**
-Log files are located in `installation_dir\log`. When a job fails, the connector also appends the JDEdwards `jde.log` and `jdedebug.log` to the OpCon job output, which you can retrieve using JORS.
+The active log file is `installation_dir\log\jdedwardse1.log`, and older files are in month-named subdirectories beneath it. When a job fails, the connector also appends the report's `.jde.log` and `.jdedebug.log` files to the OpCon job output, which you can retrieve using JORS.
 
 **What does the Batch Queue Name field do?**
-The **Batch Queue Name** field is optional. If you leave it blank, RUNUBEXML sets the queue value in the request XML automatically. If your environment requires a specific queue, enter the queue name here.
+It sets the JDEdwards batch queue the report is processed on. Enterprise Manager marks the field optional, but you must complete it: leaving it blank makes the job fail with a usage message before the report is submitted.
 
 **Can I run the same report in multiple JDEdwards environments?**
 Yes. Define a separate job for each environment and set the **Environment** and **Database Name** fields accordingly for each job.
