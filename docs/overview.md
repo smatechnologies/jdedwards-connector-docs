@@ -15,7 +15,7 @@ The JDEdwards Connector integrates the JDEdwards scheduler with OpCon workflows.
 
 ## What is it?
 
-The JDEdwards Connector is a Windows batch program that runs on a JDEdwards Enterprise Server. OpCon schedules the connector as a Windows job using the JDEdwards E1 job subtype, passing report definitions as arguments. The connector communicates with the JDEdwards environment to submit reports and with the JDEdwards database to track their status.
+The JDEdwards Connector is a Java program that runs on a JDEdwards Enterprise Server, using the Java runtime supplied in the connector package. OpCon schedules the connector as a Windows job using the JDEdwards E1 job subtype, passing report definitions as arguments. The connector communicates with the JDEdwards environment to submit reports and with the JDEdwards database to track their status.
 
 Use the JDEdwards Connector when you need to:
 
@@ -42,13 +42,13 @@ The process follows these steps:
 2. The connector submits the base XML to RUNUBEXML, which returns a request XML file
 3. The connector submits the request XML to RUNUBEXML, which returns a result XML file
 4. The connector parses the result XML to extract the unique report job ID
-5. The connector queries the F986110 table in the JDEdwards database at regular intervals to monitor the report status until it completes
+5. The connector queries the F986110 table in the JDEdwards database to monitor the report status until it completes. The first check runs five seconds after submission and subsequent checks every ten seconds. Neither interval is configurable
 
 ![JDEdwards Component Overview showing the connector workflow](../static/img/connector-component-overview.png)
 
 ## Error handling
 
-When a report completes with an error, the connector appends the JDEdwards `jde.log` and `jdedebug.log` files to the OpCon job output. You can retrieve this combined output using the OpCon Job Output Retrieval System (JORS). When configured with the OpCon Event Notification System, failed report output can be automatically emailed to a defined address or group address.
+When a report completes with an error, the connector appends the report’s JDEdwards diagnostic files to the OpCon job output. These are named for the report’s own output file and end in `.jde.log` and `.jdedebug.log`. You can retrieve this combined output using the OpCon Job Output Retrieval System (JORS). When configured with the OpCon Event Notification System, failed report output can be automatically emailed to a defined address or group address.
 
 ## FAQs
 
@@ -62,10 +62,10 @@ Yes. A single OpCon instance can start reports across multiple JDEdwards Enterpr
 The connector supports SQL Server and Oracle databases for status monitoring through the F986110 table.
 
 **What happens when a JDEdwards report fails?**
-When a report fails, the connector appends the `jde.log` and `jdedebug.log` output to the OpCon job output. You can retrieve this through JORS and configure the Event Notification System to send the output as an email attachment.
+When a report fails, the connector appends the report’s `.jde.log` and `.jdedebug.log` output to the OpCon job output. You can retrieve this through JORS and configure the Event Notification System to send the output as an email attachment.
 
 **Why does each Enterprise Server need its own connector installation?**
-The connector uses the RUNUBEXML utility to start reports. This utility must run on the same Enterprise Server where the report will execute, so a connector installation is required on each server that will run reports through OpCon.
+The connector uses the RUNUBEXML utility to start reports. This utility must run on the same Enterprise Server where the report will run, so a connector installation is required on each server that will run reports through OpCon.
 
 ## Glossary
 

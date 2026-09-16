@@ -1,4 +1,10 @@
 ---
+title: JDEdwards Connector
+description: "Start and monitor JDEdwards E1 reports from OpCon: installation, configuration, and operation reference."
+tags:
+  - Conceptual
+  - System Administrator
+  - JDEdwards Connector
 slug: '/'
 sidebar_label: 'JD Edwards Connector'
 hide_table_of_contents: true
